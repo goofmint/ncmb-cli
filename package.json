@@ -1,0 +1,19 @@
+{
+  "name": "ncmb-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "ncmb": "./bin/ncmb"
+  },
+  "author": "Atsushi Nakatsugawa",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "expand-home-dir": "0.0.3",
+    "ncmb": "^2.1.1"
+  }
+}
