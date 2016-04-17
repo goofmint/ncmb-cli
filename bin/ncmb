@@ -10,6 +10,8 @@ program
   .option('-c, --client_key [client_key]', 'Your client key', '')
   .option('-i, --init', 'Init', '')
   .option('-s, --script [Script file name]', 'Detect execution script file name', '')
+  .option('-q, --query [Query String]', 'Query parameters', '')
+  .option('-d, --data [Request body]', 'Request body', '')
   .option('-m, --method [type]', 'Detect http method. GET/POST/PUT/DELETE', /^(GET|POST|PUT|DELETE)$/, '')
   .parse(process.argv);
 
@@ -83,8 +85,11 @@ function setup() {
 function main() {
   var ncmb = new NCMB(program.application_key, program.client_key);
   var script = ncmb.Script;
+  if (program.query) {
+      script = script.query(JSON.parse(program.query));
+  }
   if (program.data) {
-      script = script.data(program.data);
+      script = script.data(JSON.parse(program.data));
   }
   script.exec(program.method, program.script)
     .then(function(res){
