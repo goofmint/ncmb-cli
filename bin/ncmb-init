@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+var NCMB = require("ncmb");
+var fs = require('fs');
+var expandHomeDir = require('expand-home-dir')
+var program = require('commander');
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .parse(process.argv);
+
+config_path = expandHomeDir("~/.ncmb.json");
+
+if (program.application_key === '' && program.client_key === '') {
+  console.log("Application key and client key is required.");
+  process.exit(1);
+} else {
+  var params = {
+    application_key: program.application_key,
+    client_key: program.client_key
+  };
+  fs.open(config_path, 'w+', function(err, fd) {
+    if (err) {
+      console.log("Error happend.", err);
+      process.exit(1);
+    }else{
+      fs.write(fd, JSON.stringify(params), function(err) {
+        if (err) {
+          console.log("Error happend.", err);
+          process.exit(1);
+        } else {
+          console.log("Config file saved successful.");
+          process.exit(0);
+        }
+      });
+    }
+  });
+}
+

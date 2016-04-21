@@ -1,6 +1,6 @@
 {
   "name": "ncmb-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "author": "Atsushi Nakatsugawa",
   "license": "MIT",
   "dependencies": {
+    "cli-table": "^0.3.1",
     "commander": "^2.9.0",
     "expand-home-dir": "0.0.3",
     "ncmb": "^2.1.1"

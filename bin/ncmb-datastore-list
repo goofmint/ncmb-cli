@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+var NCMB = require("ncmb");
+var program = require('commander');
+var common = require('../lib/common');
+var Table = require('cli-table');
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .option('-l, --limit [number]', 'Get the data numbers.', 30)
+  .option('-s, --skip [number]', 'How skip data numbers.', 0)
+  .option('-e, --except [cloumns]', 'Ignore cloumns', '')
+  .option('-i, --include [cloumns]', 'Include cloumns', '')
+  .parse(process.argv);
+
+// Class name
+program.classname = program.args[0];
+program.except = program.except.split(",");
+program.include = program.include.split(",");
+
+common.load_config(program.application_key, program.client_key)
+  .then(function(json) {
+    main(json.application_key, json.client_key);
+  },
+  function(error) {
+    console.log(error);
+    process.exit(1);
+  }
+);
+
+function main(application_key, client_key) {
+  var ncmb = new NCMB(application_key, client_key);
+  var script = ncmb.Script;
+  var classname = ncmb.DataStore(program.classname);
+  var headers = [];
+  try{
+    classname
+      .skip(parseInt(program.skip))
+      .limit(parseInt(program.limit))
+      .fetchAll()
+      .then(function(ary) {
+        for (var i = 0; i < ary.length; i++) {
+          for (var k in ary[i]) {
+            if (typeof ary[i][k] == 'function') continue;
+            if (k == 'acl' || k == 'className') continue;
+            if (program.except.indexOf(k) >= 0) continue;
+            if (program.include.length > 0) {
+              if (program.include.indexOf(k) < 0) continue;
+            }
+            if (headers.indexOf(k) < 0)
+              headers.push(k);
+          }
+        }
+        var table = new Table({head: headers});
+        var rows = [];
+        for (var i = 0; i < ary.length; i++) {
+          var row = [];
+          for (var j = 0; j < headers.length; j++) {
+            var val = ary[i].get(headers[j]);
+            if (typeof val == 'object' && val.__type == 'Pointer') {
+              val = val.className + "("+val.objectId+")";
+            }
+            row.push(typeof val == 'undefined' ? "" : val);
+          }
+          table.push(row);
+        }
+        console.log(table.toString());
+      })
+  }catch(e) {
+    console.log(e);
+    process.exit(1);
+  }
+}
