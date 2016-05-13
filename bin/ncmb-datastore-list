@@ -3,6 +3,9 @@ var NCMB = require("ncmb");
 var program = require('commander');
 var common = require('../lib/common');
 var Table = require('cli-table');
+var parse = require('node-sqlparser').parse;
+
+ncmb = null;
 
 program
   .version('0.0.1')
@@ -11,14 +14,68 @@ program
   .option('-l, --limit [number]', 'Get the data numbers.', 30)
   .option('-s, --skip [number]', 'How skip data numbers.', 0)
   .option('-e, --except [cloumns]', 'Ignore cloumns', '')
+  .option('-q, --query [query]', 'Search Query', '')
   .option('-i, --include [cloumns]', 'Include cloumns', '')
   .parse(process.argv);
+
+function build_query(classname, astObj) {
+  switch (astObj.operator) {
+  case 'AND':
+    classname = build_query(classname, astObj.left);
+    classname = build_query(classname, astObj.right);
+    break;
+  case 'OR':
+    var sub = ncmb.DataStore(program.classname);
+    sub1 = build_query(sub, astObj.left);
+    sub2 = build_query(sub, astObj.right);
+    classname = classname.or([sub1, sub2]);
+    break;
+  case '!=':
+  case '<>':
+    if (astObj.right.value == 'null') {
+      classname = classname.exists(astObj.left.column);
+    }else{
+      classname = classname.notEqualTo(astObj.left.column, astObj.right.value);
+    }
+    break;
+  case '=':
+  case '==':
+    classname = classname.equalTo(astObj.left.column, astObj.right.value);
+    break;
+  case '>':
+    classname = classname.greaterThan(astObj.left.column, astObj.right.value);
+    break;
+  case '>=':
+  case '=>':
+    classname = classname.greaterThanOrEqualTo(astObj.left.column, astObj.right.value);
+    break;
+  case '<':
+    classname = classname.lessThan(astObj.left.column, astObj.right.value);
+    break;
+  case '<=':
+  case '=<':
+    classname = classname.lessThanOrEqualTo(astObj.left.column, astObj.right.value);
+    break;
+  case 'IN':
+    classname = classname.in(astObj.left.column, astObj.right.value.map(function(data) { return data.value; }));
+    break;
+  case 'NOT IN':
+    classname = classname.notIn(astObj.left.column, astObj.right.value.map(function(data) { return data.value; }));
+    break;
+  }
+  return classname;
+}
 
 // Class name
 program.classname = program.args[0];
 program.except = program.except.split(",");
 program.include = program.include.split(",");
 
+if (program.query != "") {
+  var sql = 'SELECT * FROM dummy WHERE ' + program.query;
+  var astObj = parse(sql);
+  program.where = astObj.where;
+}
 common.load_config(program.application_key, program.client_key)
   .then(function(json) {
     main(json.application_key, json.client_key);
@@ -30,14 +87,18 @@ common.load_config(program.application_key, program.client_key)
 );
 
 function main(application_key, client_key) {
-  var ncmb = new NCMB(application_key, client_key);
+  ncmb = new NCMB(application_key, client_key);
   var script = ncmb.Script;
   var classname = ncmb.DataStore(program.classname);
   var headers = [];
   try{
-    classname
+    classname = classname
       .skip(parseInt(program.skip))
       .limit(parseInt(program.limit))
+    if (typeof program.where != 'undefined') {
+      classname = build_query(classname, program.where);
+    }
+    classname
       .fetchAll()
       .then(function(ary) {
         for (var i = 0; i < ary.length; i++) {
