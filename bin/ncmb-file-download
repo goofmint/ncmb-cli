@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+var NCMB = require("ncmb");
+var program = require('commander');
+var common = require('../lib/common');
+var path = require('path');
+var fs = require('fs');
+
+ncmb = null;
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .option('-f, --filename [filename]', 'If you want to change the file name. It is optional.', '')
+  .option('-d, --directory [path]', 'Download file to directory', '')
+  .parse(process.argv);
+
+// Class name
+program.download_filename = program.args[0];
+
+common.load_config(program.application_key, program.client_key)
+  .then(function(json) {
+    main(json.application_key, json.client_key);
+  },
+  function(error) {
+    console.log(error);
+    process.exit(1);
+  }
+);
+
+if (program.filename == '') {
+  program.filename = path.basename(program.download_filename);
+}
+
+if (program.directory == '') {
+  program.directory = path(".");
+}
+
+function main(application_key, client_key) {
+  ncmb = new NCMB(application_key, client_key);
+  var abspath = path.resolve(program.directory, program.download_filename);
+  ncmb.File.download(program.download_filename)
+    .then(function(fileData) {
+      fs.writeFileSync(abspath, fileData);
+      console.log("Download to " + abspath)
+    })
+    .catch(function(e) {
+      error = JSON.parse(e.text);
+      console.log(error.error + "(" + error.code + ")");
+      process.exit(1);
+    });
+}

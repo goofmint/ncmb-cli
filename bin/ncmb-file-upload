@@ -1,0 +1,56 @@
+#!/usr/bin/env node
+var NCMB = require("ncmb");
+var program = require('commander');
+var common = require('../lib/common');
+var path = require('path');
+var fs = require('fs');
+
+ncmb = null;
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .option('-pr, --public_read [public_read]', 'If true, everyone reads the file. Default is true', true)
+  .option('-pw, --public_write [public_write]', 'If true, everyone writes the file. Default is false', false)
+  .option('-f, --filename [filename]', 'If you want to change the file name. It is optional.', '')
+  .parse(process.argv);
+
+// Class name
+program.upload_filename = program.args[0];
+
+common.load_config(program.application_key, program.client_key)
+  .then(function(json) {
+    main(json.application_key, json.client_key);
+  },
+  function(error) {
+    console.log(error);
+    process.exit(1);
+  }
+);
+
+if (program.filename == '') {
+  program.filename = path.basename(program.upload_filename);
+}
+
+function main(application_key, client_key) {
+  ncmb = new NCMB(application_key, client_key);
+  var abspath = path.resolve(program.upload_filename);
+  fs.readFile(abspath, function (err, data) {
+    if (err) throw err;
+    var acl = new ncmb.Acl();
+    if (program.public_read)
+      acl.setPublicReadAccess(true);
+    if (program.public_write)
+      acl.setPublicWriteAccess(true);
+    ncmb.File.upload(program.filename, data, acl)
+      .then(function(data){
+        // アップロード後処理
+        console.log("Upload successful. " + data.fileName);
+      })
+      .catch(function(e) {
+        console.log(e);
+        process.exit(1);
+      });
+  });
+}
