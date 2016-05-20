@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+var NCMB = require("ncmb");
+var program = require('commander');
+var common = require('../lib/common');
+var Table = require('cli-table');
+var parse = require('node-sqlparser').parse;
+
+ncmb = null;
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .option('-i, --immediateDeliveryFlag [immediate]', 'If true, send a push notification immediately', false)
+  .option('-d, --deliveryTime [datetime]', 'Set a delivery time.', '')
+  .option('-t, --target [target]', 'set to ios, android or "ios,android"', 'ios,android')
+  .option('-m, --message [message]', 'Push notification message', '')
+  .option('--title [title]', 'Push notification title', '')
+  .option('--userSettingValue [json]', 'Set a json to payload')
+  .option('-r, --richUrl [URL]', 'Set a URL for rich push notification')
+  .option('-s, --search [search_condition]', 'Filter target to send push notifications')
+  .option('--deliveryExpirationDate [date]', 'Delivery limited date')
+  .option('--deliveryExpirationTime [time]', 'Delivery limited time')
+  .option('--action [action]', 'Custom receiver action for Android')
+  .option('--dialog [true or false]', 'Dialog setting. true or false', false)
+  .option('-b, --badgeIncrementFlag [true or false]', 'If true, budge numbers increment')
+  .option('--badgeSetting [number]', 'Setting badge numbers')
+  .option('--sound [sound]', 'Set sound file name')
+  .option('--contentAvailable [true or false]', 'If true, push notification send to News stand')
+  .option('--category [category]', 'Set a filter of category')
+
+  .parse(process.argv);
+
+if (program.search != "") {
+  var sql = 'SELECT * FROM dummy WHERE ' + program.search;
+  var astObj = parse(sql);
+  program.where = astObj.where;
+}
+
+if (program.json) {
+  program.json = JSON.parse(program.json);
+}
+
+common.load_config(program.application_key, program.client_key)
+  .then(function(json) {
+    main(json.application_key, json.client_key);
+  },
+  function(error) {
+    console.log(error);
+    process.exit(1);
+  }
+);
+/*
+console.log(program);
+process.exit(0)
+*/
+function main(application_key, client_key) {
+  ncmb = new NCMB(application_key, client_key);
+  var push = new ncmb.Push();
+  var headers = [];
+  try{
+    push.set("immediateDeliveryFlag", program.immediateDeliveryFlag == 'true' ? true : false)
+        .set('title', program.title)
+        .set("message", program.message)
+        .set('target', program.target.split(','));
+    var ary = ['deliveryTime', 'deliveryExpirationDate']
+    for (i in ary) {
+      key = ary[i];
+      if (program[key]) {
+        push = push.set(key, new Date(program[key]));
+      }
+    }
+    var ary = ['action', 'sound', 'deliveryExpirationTime', 'richUrl', 'category'];
+    for (i in ary) {
+      key = ary[i];
+      if (program[key]) {
+        push = push.set(key, program[key]);
+      }
+    }
+    if (program.userSettingValue) {
+      push = push.set('userSettingValue', JSON.parse(program.userSettingValue));
+    }
+    
+    var ary = ['dialog', 'badgeIncrementFlag', 'contentAvailable'];
+    for (i in ary) {
+      key = ary[i];
+      if (program[key]) {
+        push = push.set(key, program[key] == 'true' ? true : false);
+      }
+    }
+    
+    if (program.badgeSetting && parseInt(program.badgeSetting) > 0) {
+      push = push.set('badgeSetting', parseInt(program.badgeSetting));
+      push = push.set('badgeIncrementFlag', false);
+    }
+    
+    if (program.contentAvailable) {
+      push = push.set('badgeIncrementFlag', false);
+    }
+    
+    if (typeof program.where != 'undefined') {
+      t = ncmb.DataStore('temp')
+      t = common.build_query(t, program.where);
+      push = push.set('searchCondition', t._where);
+    }
+    push
+      .send(function(err) {
+        if (err) {
+          error = JSON.parse(err.text);
+          console.error(error.error + "("+error.code+")");
+          process.exit(1);
+        }
+        console.log("Created push notification successful.")
+      });
+  }catch(e) {
+    console.log(e);
+    process.exit(1);
+  }
+}
