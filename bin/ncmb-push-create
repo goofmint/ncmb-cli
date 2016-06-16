@@ -31,7 +31,7 @@ program
 
   .parse(process.argv);
 
-if (program.search != "") {
+if (typeof program.search != "undefined") {
   var sql = 'SELECT * FROM dummy WHERE ' + program.search;
   var astObj = parse(sql);
   program.where = astObj.where;
@@ -97,7 +97,6 @@ function main(application_key, client_key) {
     if (program.contentAvailable) {
       push = push.set('badgeIncrementFlag', false);
     }
-    
     if (typeof program.where != 'undefined') {
       t = ncmb.DataStore('temp')
       t = common.build_query(t, program.where);
@@ -106,8 +105,8 @@ function main(application_key, client_key) {
     push
       .send(function(err) {
         if (err) {
-          error = JSON.parse(err.text);
-          console.error(error.error + "("+error.code+")");
+          error = 
+          console.log(err.text.error + "("+err.text.code+")");
           process.exit(1);
         }
         console.log("Created push notification successful.")

@@ -16,12 +16,17 @@ program
   .option('-f, --filename [filename]', 'If you want to change the file name. It is optional.', '')
   .parse(process.argv);
 
-// Class name
-program.upload_filename = program.args[0];
-
 common.load_config(program.application_key, program.client_key)
   .then(function(json) {
-    main(json.application_key, json.client_key);
+    for (var i in program.args) {
+      var filename = "";
+      if (program.filename == '') {
+        filename = path.basename(program.args[i]);
+      }else{
+        filename = program.filename;
+      }
+      main(json.application_key, json.client_key, program.args[i], filename);
+    }
   },
   function(error) {
     console.log(error);
@@ -29,21 +34,19 @@ common.load_config(program.application_key, program.client_key)
   }
 );
 
-if (program.filename == '') {
-  program.filename = path.basename(program.upload_filename);
-}
 
-function main(application_key, client_key) {
+function main(application_key, client_key, upload_filename, filename) {
   ncmb = new NCMB(application_key, client_key);
-  var abspath = path.resolve(program.upload_filename);
+  var abspath = path.resolve(upload_filename);
   fs.readFile(abspath, function (err, data) {
     if (err) throw err;
     var acl = new ncmb.Acl();
+    
     if (program.public_read)
       acl.setPublicReadAccess(true);
     if (program.public_write)
       acl.setPublicWriteAccess(true);
-    ncmb.File.upload(program.filename, data, acl)
+    ncmb.File.upload(filename, data, acl)
       .then(function(data){
         // アップロード後処理
         console.log("Upload successful. " + data.fileName);
