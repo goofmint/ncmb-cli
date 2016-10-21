@@ -67,8 +67,14 @@ function fetch_or_create(className, params, i) {
           }
           item.set(k, params[k]);
         }
-        item.save()
+        if (className._className === '/classes/Installation') {
+          ncmb.request({
+            path:   "/" + ncmb.version + "/installations",
+            method: "POST",
+            data: item
+          })
           .then(function(obj) {
+            obj = JSON.parse(obj);
             console.log("Row #"+(parseInt(i)+1) + ", data saved. objectId is "+obj.objectId)
             return resolve(obj);
           })
@@ -76,6 +82,17 @@ function fetch_or_create(className, params, i) {
             console.error(err);
             reject(err)
           })
+        }else{
+          item.save()
+            .then(function(obj) {
+              console.log("Row #"+(parseInt(i)+1) + ", data saved. objectId is "+obj.objectId)
+              return resolve(obj);
+            })
+            .catch(function(err) {
+              console.error(err);
+              reject(err)
+            })
+        }
       })
       .catch(function(err) {
         reject(err);
