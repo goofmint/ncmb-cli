@@ -62,15 +62,22 @@ function fetch_or_create(className, params, i) {
           return resolve(obj);
         }
         for (var k in params) {
+          if (['objectId', 'createDate', 'updateDate', 'acl'].indexOf(k) > -1) {
+            continue;
+          }
           item.set(k, params[k]);
         }
         item.save()
           .then(function(obj) {
             console.log("Row #"+(parseInt(i)+1) + ", data saved. objectId is "+obj.objectId)
             return resolve(obj);
-          });
+          })
+          .catch(function(err) {
+            console.error(err);
+            reject(err)
+          })
       })
-      .error(function(err) {
+      .catch(function(err) {
         reject(err);
       })
   });
