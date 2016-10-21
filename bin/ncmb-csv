@@ -4,5 +4,5 @@ var program = require('commander');
 program
   .version('0.0.1')
   .command('convert [args]', 'Convert CSV to JSON file')
-  .command('import [args]', '')
+  .command('import [args]', 'CSV Import')
   .parse(process.argv);
