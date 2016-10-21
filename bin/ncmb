@@ -9,6 +9,7 @@ program
   .command('init [application_key client_key]', 'Save application_key and client_key')
   .command('script [filename]', 'Execute mBaaS script.')
   .command('datastore [args]', 'Manage data in DataStore')
+  .command('csv [args]', 'Import or convert CSV file')
   .parse(process.argv);
 
 
