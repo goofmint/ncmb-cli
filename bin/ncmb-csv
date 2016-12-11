@@ -5,4 +5,5 @@ program
   .version('0.0.1')
   .command('convert [args]', 'Convert CSV to JSON file')
   .command('import [args]', 'CSV Import')
+  .command('export [args]', 'Export class data for CSV')
   .parse(process.argv);

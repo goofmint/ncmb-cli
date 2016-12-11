@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+var program = require('commander');
+var NCMB = require("ncmb");
+var common = require('../lib/common');
+var path = require('path');
+var fs = require('fs');
+var parse = require('csv-parse');
+
+ncmb = null;
+
+program
+  .version('0.0.1')
+  .option('-a, --application_key [application_key]', 'Your application Key', '')
+  .option('-c, --client_key [client_key]', 'Your client key', '')
+  .option('--classname [className]', 'Export class name.')
+  .option('-u, --username [userName]', 'User name for authentication')
+  .option('-p, --password [password]', 'Password for authentication')
+  .option('-o, --output [filePath]', 'Ourput file path')
+  .parse(process.argv);
+
+var classname = typeof program.classname == 'undefined' ? path.basename(program.args[0], path.extname(program.args[0])) : program.classname;
+
+common.load_config(program.application_key, program.client_key)
+  .then(function(json) {
+    main(json.application_key, json.client_key);
+  },
+  function(error) {
+    console.log(error);
+    process.exit(1);
+  }
+);
+
+
+var authenticate = function(ncmb, userName, password) {
+  return new Promise(function(res, rej) {
+    if (userName && password) {
+      ncmb.User.login(program.userName, program.password)
+        .then(function(user) {
+          res(null);
+        })
+        .catch(function(err) {
+          rej(err);
+        })
+    }else{
+      res(null);
+    }
+  })
+}
+
+var data2CSV= function(data) {
+  csv = [];
+  header = [];
+  for(var i in data) {
+    var ary = Object.keys(data[i]);
+    for (var j in ary) {
+      if (ary[j] == 'acl') {
+        continue;
+      }
+      if (header.indexOf(ary[j]) < 0) {
+        header.push(ary[j]);
+      }
+    }
+  }
+  csv = [header.join("\t")];
+  for(var i in data) {
+    var row = data[i];
+    var line = [];
+    for (var j in header) {
+      if (header[j] == 'acl') {
+        continue;
+      }
+      var val = row[header[j]];
+      switch (typeof val) {
+      case 'boolean':
+      case 'number':
+        line.push(val)
+        break;
+      case 'object':
+        switch (val.__type) {
+        case 'Date':
+        line.push(val.iso);
+          break;
+        case 'GeoPoint':
+          line.push(val.latitude + "," + val.longitude);
+          break;
+        default:
+          line.push(JSON.stringify(val).replace(/"/g, '""'));
+          break;
+        }
+        break;
+      default:
+        try {
+          line.push((val || "").replace(/"/g, '""'))
+        }catch(e){
+          console.log(val, typeof val)
+        }
+      }
+    }
+    csv.push('"' + line.join('"\t"') + '"');
+  }
+  return csv;
+}
+
+var exportToCSV = function(ncmb, className, outputFileName) {
+  var data = [];
+  var limit = 1000;
+  var ClassName = ncmb.DataStore(className);
+  var loop = function(page) {
+    return new Promise(function(resolve, reject) {
+      ClassName
+        .limit(limit)
+        .skip(limit * page)
+        .fetchAll()
+        .then(function(results) {
+          if (Object.keys(results).length == 0) {
+            return resolve(true);
+          }
+          for (var i in results) {
+            data.push(results[i]);
+          }
+          loop(page + 1)
+            .then(function() {
+              resolve(true);
+            }, function(error) {
+              reject(error);
+            })
+        })
+        .catch(function(error) {
+          reject(error);
+        })
+    });
+  }
+  
+  loop(0)
+    .then(function() {
+      csv = data2CSV(data);
+      fs.writeFile(outputFileName, csv.join("\r\n"), function(err) {
+        if (err) throw err;
+        console.log("File saved. " + outputFileName);
+      });
+    });
+}
+
+function main(application_key, client_key) {
+  ncmb = new NCMB(application_key, client_key);
+  authenticate(ncmb, program.userName, program.password)
+    .then(function() {
+      exportToCSV(ncmb, classname, program.output);
+    },
+    function(err) {
+      console.error('Login failed.');
+      console.error(err);
+      process.exit(1);
+    });
+}
