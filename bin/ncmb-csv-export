@@ -47,7 +47,7 @@ var authenticate = function(ncmb, userName, password) {
   })
 }
 
-var data2CSV= function(data) {
+var data2CSV = function(data) {
   csv = [];
   header = [];
   for(var i in data) {
