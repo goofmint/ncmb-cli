@@ -11,21 +11,37 @@ program
   .version('0.0.1')
   .option('-a, --application_key [application_key]', 'Your application Key', '')
   .option('-c, --client_key [client_key]', 'Your client key', '')
-  .option('-pr, --public_read [public_read]', 'If true, everyone reads the file. Default is true', true)
-  .option('-pw, --public_write [public_write]', 'If true, everyone writes the file. Default is false', false)
-  .option('-f, --filename [filename]', 'If you want to change the file name. It is optional.', '')
+  .option('-pr, --public_read [public_read]',
+    'If true, everyone reads the file. Default is true',
+  true)
+  .option('-pw, --public_write [public_write]',
+    'If true, everyone writes the file. Default is false',
+  false)
+  .option('-f, --filename [filename]',
+    'If you want to change the file name. It is optional.',
+  '')
   .parse(process.argv);
 
 common.load_config(program.application_key, program.client_key)
   .then(function(json) {
-    for (var i in program.args) {
-      var filename = "";
-      if (program.filename == '') {
+    for (const i in program.args) {
+      let filename = '';
+      if (program.filename === '') {
         filename = path.basename(program.args[i]);
       }else{
         filename = program.filename;
       }
-      main(json.application_key, json.client_key, program.args[i], filename);
+      main(
+        json.application_key,
+        json.client_key,
+        program.args[i],
+        filename
+      ).then((message) => {
+        console.log(message);
+      }, (err) => {
+        console.error(err);
+        process.exit(1);
+      });
     }
   },
   function(error) {
@@ -35,25 +51,64 @@ common.load_config(program.application_key, program.client_key)
 );
 
 
-function main(application_key, client_key, upload_filename, filename) {
-  ncmb = new NCMB(application_key, client_key);
-  var abspath = path.resolve(upload_filename);
-  fs.readFile(abspath, function (err, data) {
-    if (err) throw err;
-    var acl = new ncmb.Acl();
-    
-    if (program.public_read)
-      acl.setPublicReadAccess(true);
-    if (program.public_write)
-      acl.setPublicWriteAccess(true);
-    ncmb.File.upload(filename, data, acl)
-      .then(function(data){
-        // アップロード後処理
-        console.log("Upload successful. " + data.fileName);
-      })
-      .catch(function(e) {
-        console.log(e);
-        process.exit(1);
-      });
+const upload = (ncmb, abspath, filename) => {
+  return new Promise((res, rej) => {
+    fs.readFile(abspath, (err, data) => {
+      if (err) throw err;
+      const acl = new ncmb.Acl();
+      if (program.public_read)
+        acl.setPublicReadAccess(true);
+      if (program.public_write)
+        acl.setPublicWriteAccess(true);
+      ncmb.File.upload(filename, data, acl)
+        .then((data) => {
+          // アップロード後処理
+          return res(`Upload successful. ${data.fileName}`)
+        })
+        .catch(function(e) {
+          rej(e)
+        });
+    });
   });
-}
+};
+
+const main = (applicationKey, clientKey, uploadFilename, filename) => {
+  return new Promise((res, rej) => {
+    ncmb = new NCMB(applicationKey, clientKey);
+    const abspath = path.resolve(uploadFilename);
+    if (fs.statSync(abspath).isDirectory()) {
+      fs.readdir(abspath, (err, files) => {
+        if (err) {
+          return rej(err);
+        }
+        const loop = (index) => {
+          if (!files[index]) {
+            res();
+          }
+          const filename = files[index];
+          const filePath = `${abspath}/${filename}`;
+          if (filename.match(/^\./)) {
+            return loop(index + 1);
+          }
+          if (fs.statSync(filePath).isDirectory()) {
+            return loop(index + 1);
+          }
+          upload(ncmb, filePath, filename)
+            .then((message) => {
+              loop(index + 1);
+            }, (err) => {
+              rej(err);
+            });
+        };
+        loop(0);
+      });
+    } else {
+      upload(ncmb, abspath, filename)
+        .then((message) => {
+          res(message);
+        }, (err) => {
+          rej(err);
+        });
+    }
+  });
+};
