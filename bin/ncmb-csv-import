@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-var program = require('commander');
-var NCMB = require("ncmb");
-var common = require('../lib/common');
-var path = require('path');
-var fs = require('fs');
-var parse = require('csv-parse');
+let program = require('commander');
+let NCMB = require('ncmb');
+let common = require('../lib/common');
+let path = require('path');
+let fs = require('fs');
+let parse = require('csv-parse');
 
 ncmb = null;
 
@@ -19,11 +19,11 @@ program
   .option('-l, --location [true or false]', 'Convert location. Similar location format string converts to location like 99.99999..,999.99999.. ', false)
   .parse(process.argv);
 
-if (typeof program.args[0] == "undefined") {
-  console.log("CSV file path is require.");
+if (typeof program.args[0] == 'undefined') {
+  console.log('CSV file path is require.');
   process.exit(1);
 }
-var classname = typeof program.classname == 'undefined' ? path.basename(program.args[0], path.extname(program.args[0])) : program.classname;
+let classname = typeof program.classname == 'undefined' ? path.basename(program.args[0], path.extname(program.args[0])) : program.classname;
 
 common.load_config(program.application_key, program.client_key)
   .then(function(json) {
@@ -35,67 +35,55 @@ common.load_config(program.application_key, program.client_key)
   }
 );
 
-function main(application_key, client_key) {
-  ncmb = new NCMB(application_key, client_key);
-  common.csv2json(program.args[0], program).then(function(results) {
-    for (i in results) {
-      var className = ncmb.DataStore(classname);
-      var params = results[i];
-      fetch_or_create(className, params, i)
-        .then(function(obj) {
-        })
-    }
-  })
-}
+const main = async (applicationKey, clientKey) => {
+  ncmb = new NCMB(applicationKey, clientKey);
+  const results = program.args[0].match(/.*\.csv$/) ? 
+    common.csv2json(program.args[0], program) :
+    require(program.args[0]).results;
+  for (let i in results) {
+    let className = ncmb.DataStore(classname);
+    let params = results[i];
+    await fetchOrCreate(className, params, i);
+  }
+};
 
-function fetch_or_create(className, params, i) {
-  var item = new className;
-  return new Promise(function(resolve, reject) {
-    for (var k in params) {
-      className = className.equalTo(k, params[k])
+const fetchOrCreate = async (ClassName, params, i) => {
+  let item = new ClassName;
+  for (let k in params) {
+    ClassName = ClassName.equalTo(k, params[k]);
+  }
+  const obj = await ClassName.fetch();
+  if (obj.objectId) {
+    // データあり
+    console.log('Row #'+(parseInt(i)+1) + ', data exist. objectId is '+obj.objectId);
+    return obj;
+  }
+  for (let k in params) {
+    if (['objectId', 'createDate', 'updateDate', 'acl'].indexOf(k) > -1) {
+      continue;
     }
-    className.fetch()
-      .then(function(obj) {
-        if (obj.objectId) {
-          // データあり
-          console.log("Row #"+(parseInt(i)+1) + ", data exist. objectId is "+obj.objectId)
-          return resolve(obj);
-        }
-        for (var k in params) {
-          if (['objectId', 'createDate', 'updateDate', 'acl'].indexOf(k) > -1) {
-            continue;
-          }
-          item.set(k, params[k]);
-        }
-        if (className._className === '/classes/Installation') {
-          ncmb.request({
-            path:   "/" + ncmb.version + "/installations",
-            method: "POST",
-            data: item
-          })
-          .then(function(obj) {
-            obj = JSON.parse(obj);
-            console.log("Row #"+(parseInt(i)+1) + ", data saved. objectId is "+obj.objectId)
-            return resolve(obj);
-          })
-          .catch(function(err) {
-            console.error(err);
-            reject(err)
-          })
-        }else{
-          item.save()
-            .then(function(obj) {
-              console.log("Row #"+(parseInt(i)+1) + ", data saved. objectId is "+obj.objectId)
-              return resolve(obj);
-            })
-            .catch(function(err) {
-              console.error(err);
-              reject(err)
-            })
-        }
-      })
-      .catch(function(err) {
-        reject(err);
-      })
-  });
-}
+    item.set(k, params[k]);
+  }
+  if (ClassName._className === '/classes/Installation') {
+    try {
+      const obj = await ncmb.request({
+        path: '/' + ncmb.version + '/installations',
+        method: 'POST',
+        data: item,
+      });
+      obj = JSON.parse(obj);
+      console.log('Row #'+(parseInt(i)+1) + ', data saved. objectId is '+obj.objectId);
+    } catch (err) {
+      console.error(err);
+      return new Error(err);
+    }
+  }else{
+    try {
+      const obj = await item.save();
+      console.log('Row #'+(parseInt(i)+1) + ', data saved. objectId is '+obj.objectId);
+      return obj;
+    } catch (err) {
+      return new Error(err);
+    }
+  }
+};
