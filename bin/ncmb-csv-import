@@ -38,7 +38,7 @@ common.load_config(program.application_key, program.client_key)
 const main = async (applicationKey, clientKey) => {
   ncmb = new NCMB(applicationKey, clientKey);
   const results = program.args[0].match(/.*\.csv$/) ? 
-    common.csv2json(program.args[0], program) :
+    await common.csv2json(program.args[0], program) :
     require(program.args[0]).results;
   for (let i in results) {
     let className = ncmb.DataStore(classname);
@@ -50,7 +50,8 @@ const main = async (applicationKey, clientKey) => {
 const fetchOrCreate = async (ClassName, params, i) => {
   let item = new ClassName;
   for (let k in params) {
-    ClassName = ClassName.equalTo(k, params[k]);
+    if (typeof params[k] !== 'object')
+      ClassName = ClassName.equalTo(k, params[k]);
   }
   const obj = await ClassName.fetch();
   if (obj.objectId) {
@@ -66,8 +67,29 @@ const fetchOrCreate = async (ClassName, params, i) => {
   }
   if (ClassName._className === '/classes/Installation') {
     try {
-      const obj = await ncmb.request({
+      let obj = await ncmb.request({
         path: '/' + ncmb.version + '/installations',
+        method: 'POST',
+        data: item,
+      });
+      obj = JSON.parse(obj);
+      console.log('Row #'+(parseInt(i)+1) + ', data saved. objectId is '+obj.objectId);
+    } catch (err) {
+      console.error(err);
+      return new Error(err);
+    }
+  }else if (ClassName._className === '/classes/User') {
+    try {
+      delete item.temporaryPassword;
+      delete item.mailAddressConfirm;
+      if (item.authData === '') {
+        delete item.authData;
+      }
+      if (item.mailAddress === '') {
+        delete item.mailAddress;
+      }
+      let obj = await ncmb.request({
+        path: '/' + ncmb.version + '/users',
         method: 'POST',
         data: item,
       });
