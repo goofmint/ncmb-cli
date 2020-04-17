@@ -56,6 +56,7 @@ const getClass = (classname) => {
 const fetchOrCreate = async (ClassName, params, i) => {
   let item = new ClassName;
   for (let k in params) {
+    if (k === '') continue;
     if (typeof params[k] !== 'object')
       ClassName = ClassName.equalTo(k, params[k]);
   }
@@ -66,7 +67,7 @@ const fetchOrCreate = async (ClassName, params, i) => {
     return obj;
   }
   for (let k in params) {
-    if (['objectId', 'createDate', 'updateDate', 'acl'].indexOf(k) > -1) {
+    if (['', 'objectId', 'createDate', 'updateDate', 'acl'].indexOf(k) > -1) {
       continue;
     }
     item.set(k, params[k]);
@@ -89,12 +90,14 @@ const fetchOrCreate = async (ClassName, params, i) => {
     try {
       delete item.temporaryPassword;
       delete item.mailAddressConfirm;
+      item.set('password', Math.random().toString(32).substring(2));
       if (item.authData === '') {
         delete item.authData;
       }
       if (item.mailAddress === '') {
         delete item.mailAddress;
       }
+      
       let obj = await ncmb.request({
         path: '/' + ncmb.version + '/users',
         method: 'POST',
