@@ -41,11 +41,17 @@ const main = async (applicationKey, clientKey) => {
     await common.csv2json(program.args[0], program) :
     require(program.args[0]).results;
   for (let i in results) {
-    let className = ncmb.DataStore(classname);
+    const className = getClass(classname);
     let params = results[i];
     await fetchOrCreate(className, params, i);
   }
 };
+
+const getClass = (classname) => {
+  if (classname === 'Installation') return ncmb.Installation;
+  if (classname === 'User') return ncmb.User;
+  return ncmb.DataStore(classname);
+}
 
 const fetchOrCreate = async (ClassName, params, i) => {
   let item = new ClassName;
@@ -65,8 +71,9 @@ const fetchOrCreate = async (ClassName, params, i) => {
     }
     item.set(k, params[k]);
   }
-  if (ClassName._className === '/classes/Installation') {
+  if (ClassName._className === '/installations') {
     try {
+      item.set('appVersion', String(params.appVersion));
       let obj = await ncmb.request({
         path: '/' + ncmb.version + '/installations',
         method: 'POST',
@@ -78,7 +85,7 @@ const fetchOrCreate = async (ClassName, params, i) => {
       console.error(err);
       return new Error(err);
     }
-  }else if (ClassName._className === '/classes/User') {
+  }else if (ClassName._className === '/users') {
     try {
       delete item.temporaryPassword;
       delete item.mailAddressConfirm;
