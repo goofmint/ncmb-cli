@@ -61,7 +61,7 @@ var data2CSV = function(data) {
       }
     }
   }
-  csv = [header.join("\t")];
+  csv = [header.join(",")];
   for(var i in data) {
     var row = data[i];
     var line = [];
