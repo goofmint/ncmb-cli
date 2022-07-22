@@ -17,7 +17,7 @@
     "csv": "^5.3.0",
     "csv-parse": ">=4.4.6",
     "expand-home-dir": "0.0.3",
-    "file-type": "^3.8.0",
+    "file-type": "^16.5.4",
     "mime-types": "^2.1.25",
     "ncmb": ">=3.0.0",
     "node-sqlparser": "^1.0.2",
