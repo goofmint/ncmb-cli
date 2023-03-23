@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 var program = require('commander');
-var NCMB = require("ncmb");
+var NCMB = require('ncmb');
 var common = require('../lib/common');
 var path = require('path');
 var fs = require('fs');
@@ -40,18 +40,18 @@ const authenticate = function(ncmb, userName, password) {
         })
         .catch(function(err) {
           rej(err);
-        })
+        });
     }else{
       res(null);
     }
-  })
-}
+  });
+};
 
 const data2CSV = function(data) {
   csv = [];
   header = [];
   for(var i in data) {
-    var ary = Object.keys(data[i]);
+    let ary = Object.keys(data[i]);
     for (var j in ary) {
       if (ary[j] == 'acl') {
         continue;
@@ -61,19 +61,19 @@ const data2CSV = function(data) {
       }
     }
   }
-  csv = [header.join("\t")];
+  csv = [header.join('\t')];
   for(var i in data) {
-    var row = data[i];
-    var line = [];
+    let row = data[i];
+    let line = [];
     for (var j in header) {
       if (header[j] == 'acl') {
         continue;
       }
-      var val = row[header[j]];
+      let val = row[header[j]];
       switch (typeof val) {
       case 'boolean':
       case 'number':
-        line.push(val)
+        line.push(val);
         break;
       case 'object':
         switch (val.__type) {
@@ -81,7 +81,7 @@ const data2CSV = function(data) {
         line.push(val.iso);
           break;
         case 'GeoPoint':
-          line.push(val.latitude + "," + val.longitude);
+          line.push(val.latitude + ',' + val.longitude);
           break;
         default:
           line.push(JSON.stringify(val).replace(/"/g, '""'));
@@ -90,21 +90,21 @@ const data2CSV = function(data) {
         break;
       default:
         try {
-          line.push((val || "").replace(/"/g, '""'))
-        }catch(e){
-          console.log(val, typeof val)
+          line.push((val || '').replace(/"/g, '""'));
+        }catch(e) {
+          console.log(val, typeof val);
         }
       }
     }
     csv.push('"' + line.join('"\t"') + '"');
   }
   return csv;
-}
+};
 
 var exportToCSV = function(ncmb, className, outputFileName) {
-  var data = [];
-  var limit = 1000;
-  const ClassName = className === 'installation' ? ncmb.installation : ncmb.DataStore(className);
+  let data = [];
+  let limit = 1000;
+  const ClassName = className === 'installation' ? ncmb.Installation : ncmb.DataStore(className);
   var loop = function(page) {
     return new Promise(function(resolve, reject) {
       ClassName
@@ -115,7 +115,7 @@ var exportToCSV = function(ncmb, className, outputFileName) {
           if (Object.keys(results).length == 0) {
             return resolve(true);
           }
-          for (var i in results) {
+          for (let i in results) {
             data.push(results[i]);
           }
           loop(page + 1)
@@ -123,23 +123,23 @@ var exportToCSV = function(ncmb, className, outputFileName) {
               resolve(true);
             }, function(error) {
               reject(error);
-            })
+            });
         })
         .catch(function(error) {
           reject(error);
-        })
+        });
     });
-  }
-  
+  };
+
   loop(0)
     .then(function() {
       csv = data2CSV(data);
-      fs.writeFile(outputFileName, csv.join("\r\n"), function(err) {
+      fs.writeFile(outputFileName, csv.join('\r\n'), function(err) {
         if (err) throw err;
-        console.log("File saved. " + outputFileName);
+        console.log('File saved. ' + outputFileName);
       });
     });
-}
+};
 
 function main(application_key, client_key) {
   ncmb = new NCMB(application_key, client_key);
