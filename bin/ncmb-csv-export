@@ -31,7 +31,7 @@ common.load_config(program.application_key, program.client_key)
 );
 
 
-var authenticate = function(ncmb, userName, password) {
+const authenticate = function(ncmb, userName, password) {
   return new Promise(function(res, rej) {
     if (userName && password) {
       ncmb.User.login(program.userName, program.password)
@@ -47,7 +47,7 @@ var authenticate = function(ncmb, userName, password) {
   })
 }
 
-var data2CSV = function(data) {
+const data2CSV = function(data) {
   csv = [];
   header = [];
   for(var i in data) {
@@ -104,7 +104,7 @@ var data2CSV = function(data) {
 var exportToCSV = function(ncmb, className, outputFileName) {
   var data = [];
   var limit = 1000;
-  var ClassName = ncmb.DataStore(className);
+  const ClassName = className === 'installation' ? ncmb.installation : ncmb.DataStore(className);
   var loop = function(page) {
     return new Promise(function(resolve, reject) {
       ClassName
