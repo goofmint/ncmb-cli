@@ -55,10 +55,18 @@ const getClass = (classname) => {
 
 const fetchOrCreate = async (ClassName, params, i) => {
   let item = new ClassName;
-  for (let k in params) {
-    if (k === '') continue;
-    if (typeof params[k] !== 'object')
+  if (ClassName._className === '/installations') {
+    for (const key of ['deviceToken']) {
+      if (params[key] && params[key] !== '') {
+        ClassName = ClassName.equalTo(key, params[key]);
+      }
+    }
+  } else {
+    for (let k in params) {
+      if (k === '') continue;
+      if (typeof params[k] !== 'object')
       ClassName = ClassName.equalTo(k, params[k]);
+    }
   }
   const obj = await ClassName.fetch();
   if (obj.objectId) {

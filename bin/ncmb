@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-var NCMB = require("ncmb");
-var fs = require('fs');
-var expandHomeDir = require('expand-home-dir')
-var program = require('commander');
+// var NCMB = require("ncmb");
+// var fs = require('fs');
+// var expandHomeDir = require('expand-home-dir')
+const program = require('commander');
 
 program
   .version('0.0.1')
